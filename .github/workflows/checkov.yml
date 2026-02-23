@@ -12,6 +12,11 @@ on:
       - 'terraform/**'
       - 'k8s/**'
 
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
 jobs:
   checkov:
     name: Checkov IaC Scan
