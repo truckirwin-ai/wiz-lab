@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: game-2048
+  name: wiz-lab
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: wizexercise
-  namespace: game-2048
+  namespace: wiz-lab
 data:
   wizexercise.txt: |
     Robert Irwin
@@ -15,18 +15,18 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: app-service-account
-  namespace: game-2048
+  name: wiz-lab-sa
+  namespace: wiz-lab
 ---
 # INTENTIONAL MISCONFIGURATION: cluster-admin privileges on app service account
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: app-cluster-admin
+  name: wiz-lab-crb
 subjects:
 - kind: ServiceAccount
-  name: app-service-account
-  namespace: game-2048
+  name: wiz-lab-sa
+  namespace: wiz-lab
 roleRef:
   kind: ClusterRole
   name: cluster-admin
@@ -35,21 +35,21 @@ roleRef:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deployment-2048
-  namespace: game-2048
+  name: wiz-lab-app
+  namespace: wiz-lab
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: app-2048
+      app.kubernetes.io/name: wiz-lab-app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: app-2048
+        app.kubernetes.io/name: wiz-lab-app
     spec:
-      serviceAccountName: app-service-account
+      serviceAccountName: wiz-lab-sa
       containers:
-      - name: app-2048
+      - name: wiz-lab-app
         image: 180294223177.dkr.ecr.us-east-1.amazonaws.com/wiz-lab-app:latest
         # INTENTIONAL MISCONFIGURATION: plaintext MongoDB URI as environment variable
         env:
@@ -69,11 +69,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: service-2048
-  namespace: game-2048
+  name: wiz-lab-svc
+  namespace: wiz-lab
 spec:
   selector:
-    app.kubernetes.io/name: app-2048
+    app.kubernetes.io/name: wiz-lab-app
   ports:
   - port: 80
     targetPort: 5000
@@ -82,13 +82,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-2048
-  namespace: game-2048
+  name: wiz-lab-ingress
+  namespace: wiz-lab
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
 spec:
-  ingressClassName: eks.amazonaws.com/alb
+  ingressClassName: alb
   rules:
   - http:
       paths:
@@ -96,6 +96,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: service-2048
+            name: wiz-lab-svc
             port:
               number: 80
