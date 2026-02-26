@@ -1,4 +1,4 @@
-name: Container Security Scan (Trivy)
+name: Wiz App — Build, Scan, Push (Trivy)
 
 on:
   push:
@@ -14,39 +14,62 @@ permissions:
   security-events: write
   actions: read
   contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 180294223177.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: wiz-lab-app
 
 jobs:
-  trivy:
-    name: Trivy Container Scan
+  build-scan-push:
+    name: Build, Trivy Scan, Push to ECR
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t wiz-lab-app:${{ github.sha }} ./app
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Run Trivy vulnerability scan
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} ./app
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Run Trivy vulnerability scan (SARIF)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: wiz-lab-app:${{ github.sha }}
+          image-ref: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH,MEDIUM
-          exit-code: 0   # Don't block pipeline — findings are expected
+          exit-code: 0
 
       - name: Run Trivy scan (table output for logs)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: wiz-lab-app:${{ github.sha }}
+          image-ref: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           format: table
           severity: CRITICAL,HIGH,MEDIUM
           exit-code: 0
 
-      - name: Upload Trivy SARIF results
+      - name: Upload Trivy SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
           category: trivy-container
+
+      - name: Push image to ECR
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

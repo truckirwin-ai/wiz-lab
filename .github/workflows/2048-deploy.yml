@@ -1,0 +1,42 @@
+name: 2048 Game — Deploy to EKS
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'k8s/**'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: wiz-lab-eks
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to EKS
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl rollout status deployment/deployment-2048 -n game-2048 --timeout=120s

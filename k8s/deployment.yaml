@@ -50,13 +50,13 @@ spec:
       serviceAccountName: app-service-account
       containers:
       - name: app-2048
-        image: public.ecr.aws/l6m2t8p7/docker-2048:latest
+        image: 180294223177.dkr.ecr.us-east-1.amazonaws.com/wiz-lab-app:latest
         # INTENTIONAL MISCONFIGURATION: plaintext MongoDB URI as environment variable
         env:
         - name: MONGO_URI
-          value: "mongodb://admin:password123@mongo.game-2048.svc.cluster.local:27017/appdb"
+          value: "mongodb://admin:password123@10.0.15.11:27017/appdb"
         ports:
-        - containerPort: 80
+        - containerPort: 5000
         volumeMounts:
         - name: wizexercise
           mountPath: /usr/share/nginx/html/wizexercise.txt
@@ -76,7 +76,7 @@ spec:
     app.kubernetes.io/name: app-2048
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 5000
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
@@ -88,7 +88,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
 spec:
-  ingressClassName: alb
+  ingressClassName: eks.amazonaws.com/alb
   rules:
   - http:
       paths:
