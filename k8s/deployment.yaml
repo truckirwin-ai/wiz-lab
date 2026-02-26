@@ -99,3 +99,4 @@ spec:
             name: wiz-lab-svc
             port:
               number: 80
+ 
